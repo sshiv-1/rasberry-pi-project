@@ -1,0 +1,382 @@
+{
+  "Apple___Apple_scab": {
+    "label": "Apple — Apple scab",
+    "category": "disease",
+    "advice": [
+      "Remove infected fallen leaves and improve airflow.",
+      "Avoid prolonged leaf wetness; use resistant varieties where possible.",
+      "Follow locally approved apple-scab management guidance."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Apple___Black_rot": {
+    "label": "Apple — Black rot",
+    "category": "disease",
+    "advice": [
+      "Remove mummified fruit, dead branches, and infected debris.",
+      "Prune appropriately and disinfect tools between plants.",
+      "Seek crop-specific guidance if the disease persists."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Apple___Cedar_apple_rust": {
+    "label": "Apple — Cedar apple rust",
+    "category": "disease",
+    "advice": [
+      "Inspect for orange-yellow leaf spots.",
+      "Remove fallen infected leaves and consider resistant cultivars.",
+      "Seek local guidance on managing nearby susceptible host plants."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Apple___healthy": {
+    "label": "Apple — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain appropriate watering, nutrition, and airflow.",
+      "Monitor new growth and avoid unnecessary pesticide use."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Blueberry___healthy": {
+    "label": "Blueberry — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain suitable soil acidity, watering, and drainage.",
+      "Monitor leaves and new growth regularly."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Cherry_(including_sour)___Powdery_mildew": {
+    "label": "Cherry (including sour) — Powdery mildew",
+    "category": "disease",
+    "advice": [
+      "Remove severely affected leaves where practical.",
+      "Improve airflow and avoid excessive nitrogen fertilization.",
+      "Use locally approved, crop-specific controls if needed."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Cherry_(including_sour)___healthy": {
+    "label": "Cherry (including sour) — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain good airflow, suitable watering, and orchard sanitation.",
+      "Monitor foliage and fruit for new symptoms."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": {
+    "label": "Corn (maize) — Cercospora leaf spot Gray leaf spot",
+    "category": "disease",
+    "advice": [
+      "Inspect for elongated lesions bounded by leaf veins.",
+      "Use resistant hybrids and manage infected crop residue.",
+      "Consider crop rotation and local disease-management guidance."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Corn_(maize)___Common_rust_": {
+    "label": "Corn (maize) — Common rust ",
+    "category": "disease",
+    "advice": [
+      "Treat this prediction as preliminary.",
+      "Inspect the plant and confirm the cause.",
+      "Consult local agricultural guidance before treatment."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Corn_(maize)___Northern_Leaf_Blight": {
+    "label": "Corn (maize) — Northern Leaf Blight",
+    "category": "disease",
+    "advice": [
+      "Check for long, cigar-shaped leaf lesions.",
+      "Use resistant hybrids and manage crop residue appropriately.",
+      "Consult local guidance if disease spreads rapidly."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Corn_(maize)___healthy": {
+    "label": "Corn (maize) — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain balanced nutrition and appropriate irrigation.",
+      "Inspect leaves regularly throughout crop growth."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Grape___Black_rot": {
+    "label": "Grape — Black rot",
+    "category": "disease",
+    "advice": [
+      "Remove mummified berries and infected clusters.",
+      "Improve canopy airflow and reduce prolonged leaf wetness.",
+      "Follow locally recommended grape black-rot management."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Grape___Esca_(Black_Measles)": {
+    "label": "Grape — Esca (Black Measles)",
+    "category": "disease",
+    "advice": [
+      "Inspect for leaf discoloration, fruit symptoms, and vine dieback.",
+      "Mark symptomatic vines and follow appropriate vineyard sanitation.",
+      "Seek expert assessment; established trunk disease is not reliably cured by leaf sprays."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": {
+    "label": "Grape — Leaf blight (Isariopsis Leaf Spot)",
+    "category": "disease",
+    "advice": [
+      "Remove infected fallen leaves where practical.",
+      "Improve canopy airflow and avoid prolonged foliage wetness.",
+      "Confirm the cause before applying a crop-labeled treatment."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Grape___healthy": {
+    "label": "Grape — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain canopy airflow and appropriate irrigation.",
+      "Inspect leaves and fruit regularly."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Orange___Haunglongbing_(Citrus_greening)": {
+    "label": "Orange — Haunglongbing (Citrus greening)",
+    "category": "disease",
+    "advice": [
+      "Arrange confirmation through a local citrus diagnostic service.",
+      "Inspect for Asian citrus psyllids and avoid moving potentially infected plant material.",
+      "There is no reliable curative treatment for established citrus greening; follow local plant-health guidance."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Peach___Bacterial_spot": {
+    "label": "Peach — Bacterial spot",
+    "category": "disease",
+    "advice": [
+      "Avoid handling wet plants and reduce overhead irrigation.",
+      "Use clean planting material and remove affected debris where practical.",
+      "Use resistant varieties and locally approved controls where appropriate."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Peach___healthy": {
+    "label": "Peach — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain appropriate irrigation, nutrition, and pruning.",
+      "Monitor leaves, branches, and fruit."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Pepper,_bell___Bacterial_spot": {
+    "label": "Pepper, bell — Bacterial spot",
+    "category": "disease",
+    "advice": [
+      "Use clean seed and transplants and sanitize tools.",
+      "Reduce water splash and avoid working among wet plants.",
+      "Use resistant varieties and locally approved controls where appropriate."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Pepper,_bell___healthy": {
+    "label": "Pepper, bell — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain consistent watering and good airflow.",
+      "Inspect leaves and fruit regularly."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Potato___Early_blight": {
+    "label": "Potato — Early blight",
+    "category": "disease",
+    "advice": [
+      "Look for dark leaf spots with concentric rings.",
+      "Manage crop debris, rotate crops, and avoid prolonged leaf wetness.",
+      "Use healthy seed tubers and locally approved controls if needed."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Potato___Late_blight": {
+    "label": "Potato — Late blight",
+    "category": "disease",
+    "advice": [
+      "Treat suspected late blight as urgent because it can spread rapidly.",
+      "Separate suspect plant material and seek prompt local confirmation.",
+      "Follow local disposal and crop-specific treatment guidance."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Potato___healthy": {
+    "label": "Potato — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Use healthy seed tubers and maintain appropriate irrigation.",
+      "Monitor foliage and tubers for symptoms."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Raspberry___healthy": {
+    "label": "Raspberry — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain good drainage, airflow, and appropriate pruning.",
+      "Inspect canes and leaves regularly."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Soybean___healthy": {
+    "label": "Soybean — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain suitable soil moisture and balanced crop nutrition.",
+      "Scout regularly for disease and insect damage."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Squash___Powdery_mildew": {
+    "label": "Squash — Powdery mildew",
+    "category": "disease",
+    "advice": [
+      "Look for white powdery growth on leaf surfaces.",
+      "Improve airflow and remove severely affected leaves where practical.",
+      "Use resistant varieties and locally approved controls if necessary."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Strawberry___Leaf_scorch": {
+    "label": "Strawberry — Leaf scorch",
+    "category": "disease",
+    "advice": [
+      "Remove severely affected leaves and fallen debris where practical.",
+      "Maintain plant spacing and avoid prolonged leaf wetness.",
+      "Use healthy planting stock and seek local guidance if symptoms spread."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Strawberry___healthy": {
+    "label": "Strawberry — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain good drainage and appropriate watering.",
+      "Inspect leaves, flowers, and fruit regularly."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Tomato___Bacterial_spot": {
+    "label": "Tomato — Bacterial spot",
+    "category": "disease",
+    "advice": [
+      "Use clean seed and transplants and sanitize tools.",
+      "Reduce leaf splash and avoid working among wet plants.",
+      "Use resistant varieties and locally approved controls where appropriate."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Tomato___Early_blight": {
+    "label": "Tomato — Early blight",
+    "category": "disease",
+    "advice": [
+      "Remove affected lower leaves and infected debris where practical.",
+      "Mulch to reduce soil splash and improve airflow.",
+      "Use crop rotation and locally approved controls if needed."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Tomato___Late_blight": {
+    "label": "Tomato — Late blight",
+    "category": "disease",
+    "advice": [
+      "Separate suspect plant material and seek prompt local confirmation.",
+      "Avoid handling wet foliage and limit overhead irrigation.",
+      "Follow local guidance for disposal and approved crop-specific treatment."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Tomato___Leaf_Mold": {
+    "label": "Tomato — Leaf Mold",
+    "category": "disease",
+    "advice": [
+      "Improve ventilation and reduce excessive canopy humidity.",
+      "Water near the soil and remove severely affected leaves where practical.",
+      "Use resistant varieties and locally approved controls if necessary."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Tomato___Septoria_leaf_spot": {
+    "label": "Tomato — Septoria leaf spot",
+    "category": "disease",
+    "advice": [
+      "Remove affected lower leaves and fallen debris where practical.",
+      "Mulch to reduce soil splash and improve plant spacing.",
+      "Rotate crops and seek local guidance if disease persists."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Tomato___Spider_mites Two-spotted_spider_mite": {
+    "label": "Tomato — Spider mites Two-spotted spider mite",
+    "category": "disease",
+    "advice": [
+      "Inspect leaf undersides for mites, stippling, and webbing.",
+      "Rinse leaf undersides for small infestations and protect beneficial insects.",
+      "Use a locally registered miticide only when infestation is confirmed."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Tomato___Target_Spot": {
+    "label": "Tomato — Target Spot",
+    "category": "disease",
+    "advice": [
+      "Remove severely affected foliage where practical.",
+      "Improve airflow and avoid prolonged leaf wetness.",
+      "Confirm the disease before using a crop-specific treatment."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Tomato___Tomato_Yellow_Leaf_Curl_Virus": {
+    "label": "Tomato — Tomato Yellow Leaf Curl Virus",
+    "category": "disease",
+    "advice": [
+      "Inspect for whiteflies and use locally recommended vector management.",
+      "Use clean transplants and resistant varieties where available.",
+      "There is no curative spray for an established viral infection."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Tomato___Tomato_mosaic_virus": {
+    "label": "Tomato — Tomato mosaic virus",
+    "category": "disease",
+    "advice": [
+      "Use clean seed and transplants and disinfect tools appropriately.",
+      "Wash hands after handling suspect plants and avoid unnecessary handling.",
+      "Confirm the virus and follow local advice on infected plants."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  },
+  "Tomato___healthy": {
+    "label": "Tomato — healthy",
+    "category": "healthy",
+    "advice": [
+      "No disease was indicated by the model.",
+      "Maintain appropriate watering, nutrition, and airflow.",
+      "Monitor new growth and avoid unnecessary pesticide use."
+    ],
+    "note": "General information only. Confirm the diagnosis and follow local agricultural guidance and product labels."
+  }
+}
