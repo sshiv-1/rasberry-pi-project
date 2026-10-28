@@ -12,6 +12,7 @@ import numpy as np
 import onnxruntime as ort
 from flask import Flask, jsonify, render_template_string, request
 from PIL import Image, ImageOps, UnidentifiedImageError
+from werkzeug.exceptions import HTTPException
 
 
 # ============================================================
@@ -818,6 +819,39 @@ def healthz():
     })
 
 
+def api_error(message: str, status_code: int):
+    return jsonify({
+        "success": False,
+        "error": message,
+    }), status_code
+
+
+def prediction_payload(results: list[dict], advice: dict, low_confidence: bool):
+    top_result = results[0]
+    prediction = {
+        "class_name": top_result["class_name"],
+        "display_label": top_result["label"],
+        "confidence": top_result["confidence"],
+        "is_healthy": "healthy" in top_result["class_name"].casefold(),
+    }
+    top_predictions = [
+        {
+            **result,
+            "display_label": result["label"],
+            "is_healthy": "healthy" in result["class_name"].casefold(),
+        }
+        for result in results
+    ]
+    return {
+        "success": True,
+        "prediction": prediction,
+        "top_predictions": top_predictions,
+        "treatment": advice,
+        "low_confidence": low_confidence,
+        "confidence_threshold": MIN_CONFIDENCE,
+    }
+
+
 # ============================================================
 # MAIN WEB ROUTE
 # ============================================================
@@ -876,6 +910,11 @@ def index():
 
 @app.errorhandler(413)
 def too_large(_error):
+    if request.path.startswith("/api/"):
+        return api_error(
+            "The uploaded image is larger than 10 MB.",
+            413,
+        )
 
     return render_template_string(
         PAGE,
@@ -889,12 +928,36 @@ def too_large(_error):
     ), 413
 
 
-@app.route("/predict", methods=["POST"])
+@app.errorhandler(HTTPException)
+def handle_http_exception(error):
+    if request.path.startswith("/api/"):
+        return api_error(
+            "Endpoint not found" if error.code == 404 else error.description,
+            error.code,
+        )
+    return error
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_exception(error):
+    if request.path.startswith("/api/"):
+        logger.exception("Unexpected API error")
+        return api_error("Internal server error", 500)
+    raise error
+
+
+@app.route("/api/predict", methods=["POST"])
 def predict_api():
-    """Return the same prediction data as JSON for programmatic clients."""
+    """Classify one uploaded image for programmatic clients."""
     try:
+        upload = request.files.get("leaf_image")
+        if upload is None:
+            return api_error(
+                "Missing multipart file field 'leaf_image'.",
+                422,
+            )
         results, advice, low_confidence = analyze_upload(
-            request.files.get("leaf_image")
+            upload
         )
     except (
         UnidentifiedImageError,
@@ -902,27 +965,23 @@ def predict_api():
         Image.DecompressionBombWarning,
         OSError,
     ):
-        return jsonify({
-            "error": (
+        return api_error(
+            (
                 "This file could not be read safely as an image. "
                 "Please use a valid, smaller JPEG or PNG photo."
-            )
-        }), 400
+            ),
+            400,
+        )
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return api_error(str(exc), 400)
     except Exception:
         logger.exception("Prediction API request failed")
-        return jsonify({
-            "error": "Prediction failed. Check the server logs."
-        }), 500
+        return api_error(
+            "Prediction failed. Check the server logs.",
+            500,
+        )
 
-    return jsonify({
-        "predictions": results,
-        "top_prediction": results[0],
-        "low_confidence": low_confidence,
-        "confidence_threshold": MIN_CONFIDENCE,
-        "advice": advice,
-    })
+    return jsonify(prediction_payload(results, advice, low_confidence))
 
 
 # ============================================================

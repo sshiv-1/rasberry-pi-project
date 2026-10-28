@@ -210,7 +210,7 @@ def make_test_image_bytes(format="JPEG", size=(160, 160), color="green") -> io.B
 
 
 def test_api_predict_json_success():
-    """Verify POST /predict with a valid leaf image returns 200 and all documented JSON fields."""
+    """Verify POST /api/predict returns the canonical prediction schema."""
     pytest.importorskip("flask")
     import sys
     sys.path.insert(0, str(ROOT))
@@ -220,27 +220,29 @@ def test_api_predict_json_success():
     img_buf = make_test_image_bytes()
 
     data = {"leaf_image": (img_buf, "test_leaf.jpg")}
-    response = client.post("/predict", data=data, content_type="multipart/form-data")
+    response = client.post("/api/predict", data=data, content_type="multipart/form-data")
 
     assert response.status_code == 200
     assert response.is_json
     payload = response.get_json()
 
-    assert "predictions" in payload
-    assert isinstance(payload["predictions"], list)
-    assert len(payload["predictions"]) == min(3, len(pi_app.class_names))
+    assert payload["success"] is True
+    assert "top_predictions" in payload
+    assert isinstance(payload["top_predictions"], list)
+    assert len(payload["top_predictions"]) == min(3, len(pi_app.class_names))
 
-    top = payload["top_prediction"]
+    top = payload["prediction"]
     assert "class_name" in top
-    assert "label" in top
+    assert "display_label" in top
     assert "confidence" in top
+    assert isinstance(top["is_healthy"], bool)
     assert 0.0 <= top["confidence"] <= 1.0
 
     assert "low_confidence" in payload
     assert isinstance(payload["low_confidence"], bool)
     assert payload["confidence_threshold"] == pi_app.MIN_CONFIDENCE
 
-    advice = payload["advice"]
+    advice = payload["treatment"]
     assert "advice" in advice
     assert "label" in advice
     assert "category" in advice
@@ -267,7 +269,7 @@ def test_healthz_endpoint():
 
 
 def test_api_invalid_and_corrupt_upload_returns_400():
-    """Verify /predict correctly rejects missing file, empty filename, and corrupt non-image bytes with 400."""
+    """Verify /api/predict returns JSON errors for missing and corrupt uploads."""
     pytest.importorskip("flask")
     import sys
     sys.path.insert(0, str(ROOT))
@@ -276,14 +278,16 @@ def test_api_invalid_and_corrupt_upload_returns_400():
     client = pi_app.app.test_client()
 
     # Empty payload
-    r1 = client.post("/predict", data={})
-    assert r1.status_code == 400
+    r1 = client.post("/api/predict", data={})
+    assert r1.status_code == 422
+    assert r1.is_json
     assert "error" in r1.get_json()
 
     # Corrupt non-image bytes
     corrupt_buf = io.BytesIO(b"not a valid jpeg or png file header")
-    r2 = client.post("/predict", data={"leaf_image": (corrupt_buf, "bad.jpg")}, content_type="multipart/form-data")
+    r2 = client.post("/api/predict", data={"leaf_image": (corrupt_buf, "bad.jpg")}, content_type="multipart/form-data")
     assert r2.status_code == 400
+    assert r2.is_json
     assert "error" in r2.get_json()
 
 
@@ -301,11 +305,28 @@ def test_oversized_pixel_bomb_protection():
     pi_app.MAX_IMAGE_PIXELS = 100
     try:
         buf = make_test_image_bytes(size=(20, 20))  # 400 pixels > 100
-        response = client.post("/predict", data={"leaf_image": (buf, "big.jpg")}, content_type="multipart/form-data")
+        response = client.post("/api/predict", data={"leaf_image": (buf, "big.jpg")}, content_type="multipart/form-data")
         assert response.status_code == 400
         assert "error" in response.get_json()
     finally:
         pi_app.MAX_IMAGE_PIXELS = orig_max
+
+
+def test_unknown_api_endpoint_returns_json_404():
+    """API route misses must not fall through to Flask's HTML 404 page."""
+    pytest.importorskip("flask")
+    import sys
+    sys.path.insert(0, str(ROOT))
+    import pi_app
+
+    response = pi_app.app.test_client().get("/api/does-not-exist")
+
+    assert response.status_code == 404
+    assert response.is_json
+    assert response.get_json() == {
+        "success": False,
+        "error": "Endpoint not found",
+    }
 
 
 # -------------------------------------------------------------
