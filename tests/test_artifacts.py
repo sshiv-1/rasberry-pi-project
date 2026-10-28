@@ -1,16 +1,19 @@
 import io
 import json
 import hashlib
+import sys
 from pathlib import Path
 
 import pytest
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
+PI_DIR = ROOT / "pi"
+sys.path.insert(0, str(PI_DIR))
 
 
 def load_json(name: str):
-    with (ROOT / name).open(encoding="utf-8") as file:
+    with (PI_DIR / name).open(encoding="utf-8") as file:
         return json.load(file)
 
 
@@ -70,7 +73,7 @@ def test_healthy_and_disease_advice_structure():
 
 def test_deployment_metadata_consistency():
     """Verify deployment_metadata.json matches model.onnx and class_names.json hashes and shapes."""
-    meta_path = ROOT / "deployment_metadata.json"
+    meta_path = PI_DIR / "deployment_metadata.json"
     assert meta_path.is_file(), "deployment_metadata.json must exist"
     meta = load_json("deployment_metadata.json")
 
@@ -81,8 +84,8 @@ def test_deployment_metadata_consistency():
     assert meta.get("epochs_trained") == 50
 
     # Model and class hashes
-    assert meta.get("model_sha256") == sha256_file(ROOT / "model.onnx")
-    assert meta.get("class_names_sha256") == sha256_file(ROOT / "class_names.json")
+    assert meta.get("model_sha256") == sha256_file(PI_DIR / "model.onnx")
+    assert meta.get("class_names_sha256") == sha256_file(PI_DIR / "class_names.json")
 
     # Export metadata
     export = meta.get("export", {})
@@ -94,11 +97,11 @@ def test_deployment_metadata_consistency():
 
 def test_model_artifact_is_present_and_standalone():
     """Verify model.onnx is present, standalone (>1MB), and requires no external data files."""
-    model_path = ROOT / "model.onnx"
+    model_path = PI_DIR / "model.onnx"
     assert model_path.is_file()
     assert model_path.stat().st_size > 1_000_000, "model.onnx should be >1MB"
     # Ensure no external data chunks are missing
-    external_data = list(ROOT.glob("*.onnx.data"))
+    external_data = list(PI_DIR.glob("*.onnx.data"))
     assert len(external_data) == 0, "Model should be self-contained without external .onnx.data files"
 
 
@@ -112,7 +115,7 @@ def test_onnx_shape_and_cpu_execution():
     import numpy as np
 
     session = ort.InferenceSession(
-        str(ROOT / "model.onnx"),
+        str(PI_DIR / "model.onnx"),
         providers=["CPUExecutionProvider"],
     )
     input_meta = session.get_inputs()[0]
@@ -335,7 +338,7 @@ def test_unknown_api_endpoint_returns_json_404():
 
 def test_requirements_pi_excludes_pytorch_tensorflow():
     """Verify requirements-pi.txt excludes heavyweight PyTorch and TensorFlow dependencies."""
-    req_path = ROOT / "requirements-pi.txt"
+    req_path = PI_DIR / "requirements-pi.txt"
     assert req_path.is_file()
     lines = [line.strip().lower() for line in req_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
@@ -353,8 +356,8 @@ def test_requirements_pi_excludes_pytorch_tensorflow():
 
 def test_service_and_setup_script_paths_and_env():
     """Verify setup_and_run_pi.sh and plant-disease-detector.service specify consistent defaults and paths."""
-    setup_sh = (ROOT / "setup_and_run_pi.sh").read_text(encoding="utf-8")
-    service = (ROOT / "plant-disease-detector.service").read_text(encoding="utf-8")
+    setup_sh = (PI_DIR / "setup_and_run_pi.sh").read_text(encoding="utf-8")
+    service = (PI_DIR / "plant-disease-detector.service").read_text(encoding="utf-8")
 
     # Consistent gunicorn parameters
     assert "5000" in setup_sh and "5000" in service

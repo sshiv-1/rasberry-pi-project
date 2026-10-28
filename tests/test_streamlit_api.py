@@ -1,10 +1,13 @@
 import json
+import sys
 from pathlib import Path
 
 import pytest
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
+FRONTEND_DIR = ROOT / "frontend"
+sys.path.insert(0, str(FRONTEND_DIR))
 
 
 def json_response(status: int, payload: dict, content_type: str = "application/json"):
@@ -96,7 +99,7 @@ def test_frontend_preserves_disconnected_backend_error(monkeypatch):
 
 
 def test_streamlit_uses_canonical_contract():
-    source = (ROOT / "streamlit_app.py").read_text(encoding="utf-8")
+    source = (FRONTEND_DIR / "streamlit_app.py").read_text(encoding="utf-8")
 
     assert "http://127.0.0.1:5000" in source
     assert "PREDICT_PATH" in source
@@ -104,7 +107,7 @@ def test_streamlit_uses_canonical_contract():
 
 
 def test_streamlit_frontend_is_upload_only_and_has_no_local_advice():
-    source = (ROOT / "streamlit_app.py").read_text(encoding="utf-8")
+    source = (FRONTEND_DIR / "streamlit_app.py").read_text(encoding="utf-8")
 
     assert "st.camera_input" not in source
     assert "st.tabs" not in source

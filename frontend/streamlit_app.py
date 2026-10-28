@@ -164,12 +164,26 @@ st.markdown(
     }
     [data-testid="stDataFrame"] { border: 1px solid var(--leaflens-line); }
     .footer-note { color: var(--text-color); opacity: .72; font-size: .82rem; text-align: center; padding-top: 1.5rem; }
+
+    /* --- refinements --- */
+    .hero:after { pointer-events: none; }
+    @media (max-width: 640px) {
+        .hero { padding: 1.5rem 1.25rem; border-radius: 22px; }
+        .hero:after { font-size: 7rem; right: -.5rem; top: -1.5rem; }
+        .block-container { padding-top: 1rem; }
+    }
+    .soft-card p:last-child { margin-bottom: 0; }
+    div.stButton > button { transition: background .15s ease, transform .1s ease; }
+    div.stButton > button[kind="primary"]:active { transform: scale(.99); }
+    [data-testid="stImage"] img { border-radius: 16px; }
+    footer { visibility: hidden; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 
+@st.cache_data(show_spinner=False, max_entries=8)
 def to_jpeg_bytes(file_bytes: bytes) -> tuple[bytes, Image.Image]:
     """Validate, orient, resize, and encode one uploaded image in memory."""
     if not file_bytes:
@@ -261,7 +275,7 @@ def render_precheck(payload: dict[str, Any]) -> None:
     method = leaf_check.get("method") or "Backend method not reported"
     explanation = leaf_check.get("message") or "The backend did not provide an explanation."
 
-    check_cols = st.columns([0.2, 0.8])
+    check_cols = st.columns([0.32, 0.68])
     with check_cols[0]:
         st.metric("Heuristic result", status)
         if score is not None:
@@ -302,10 +316,9 @@ def render_results(result: dict[str, Any]) -> None:
         st.markdown("### Most likely class")
         st.subheader(display_name)
         st.caption(f"Exact model class key: `{predicted_class}`")
-        st.write(
-            "**Plant status:** "
-            + ("Healthy class predicted." if is_healthy else "Disease/condition class predicted.")
-        )
+        badge = "✅ Healthy class predicted" if is_healthy else "⚠️ Disease/condition class predicted"
+        st.markdown(f'<span class="status-label">{badge}</span>', unsafe_allow_html=True)
+        st.write("")
         if result.get("low_confidence"):
             st.warning("Low confidence. Predictions are preliminary and confidence is not proof of a confirmed diagnosis.")
         else:
@@ -316,18 +329,27 @@ def render_results(result: dict[str, Any]) -> None:
 
     st.markdown("### Top three predictions")
     rows = []
-    for item in top_predictions[:3]:
+    for rank, item in enumerate(top_predictions[:3], start=1):
         if not isinstance(item, dict):
             continue
         label = item.get("display_label", item.get("label", item.get("class_name", "Unknown")))
-        item_confidence = item.get("confidence", 0.0)
         try:
-            item_confidence = float(item_confidence)
+            item_confidence = float(item.get("confidence", 0.0))
         except (TypeError, ValueError):
             item_confidence = 0.0
-        rows.append({"Class": label, "Confidence": f"{item_confidence * 100:.2f}%"})
+        rows.append({"#": rank, "Class": label, "Confidence": item_confidence * 100})
     if rows:
-        st.dataframe(rows, hide_index=True, use_container_width=True)
+        st.dataframe(
+            rows,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "#": st.column_config.NumberColumn(width="small"),
+                "Confidence": st.column_config.ProgressColumn(
+                    "Confidence", min_value=0, max_value=100, format="%.2f%%"
+                ),
+            },
+        )
     else:
         st.warning("The Raspberry Pi did not return top predictions.")
 
@@ -432,6 +454,16 @@ with left:
         key="leaflens_upload_input",
         help=f"Maximum file size: {MAX_FRONTEND_IMAGE_MB} MB.",
     )
+    # Clear stale results when a different image is uploaded
+    upload_id = (
+        getattr(uploaded_photo, "file_id", None) or (uploaded_photo.name, uploaded_photo.size)
+        if uploaded_photo is not None else None
+    )
+    if upload_id != st.session_state.get("leaflens_upload_id"):
+        st.session_state["leaflens_upload_id"] = upload_id
+        for key in ("leaflens_result", "leaflens_error", "leaflens_error_payload"):
+            st.session_state.pop(key, None)
+
     preview_ready = uploaded_photo is not None
     if uploaded_photo is not None:
         try:
