@@ -1,0 +1,26 @@
+{
+  "dataset": "vipoooool/new-plant-diseases-dataset",
+  "architecture": "MobileNetV2",
+  "input_size": 160,
+  "classes": 38,
+  "model_file": "model.onnx",
+  "class_names_file": "class_names.json",
+  "treatment_advice_file": "treatment_advice.json",
+  "backbone_frozen": true,
+  "trainable_component": "classifier head only",
+  "epochs_trained": 50,
+  "class_names_sha256": "16925c0cb74cd5be219eb9e8cf87f0fa4f5c255f49b8db7c865c55050cb7d307",
+  "model_sha256": "8dfa4232da710ba9e2fd232945e414342036ba53f64a1eb89d6ad69bdf745aed",
+  "export": {
+    "opset_version": 17,
+    "input_name": "images",
+    "output_name": "probabilities",
+    "input_layout": "NCHW",
+    "input_dtype": "float32",
+    "input_range": "[0, 255]",
+    "normalization": "ImageNet mean/std inside ONNX graph",
+    "dynamic_batch": true,
+    "parity_rtol": 0.0001,
+    "parity_atol": 1e-05
+  }
+}

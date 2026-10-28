@@ -8,36 +8,15 @@ Original file is located at
 """
 
 
-import kagglehub
-
-path = kagglehub.dataset_download("vipoooool/new-plant-diseases-dataset")
-
-print("Path to dataset files:", path)
-
-import importlib.util
-import subprocess
-import sys
-
-_REQUIRED_PACKAGES = {
-    "kagglehub": "kagglehub",
-    "sklearn": "scikit-learn",
-    "matplotlib": "matplotlib",
-    "onnx": "onnx",
-    "onnxruntime": "onnxruntime",
-    "pandas": "pandas",
-}
-_missing = [pip_name for module, pip_name in _REQUIRED_PACKAGES.items()
-            if importlib.util.find_spec(module) is None]
-if _missing:
-    print("Installing missing helper packages:", ", ".join(_missing))
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", *_missing])
-
 import os
 import json
 import time
 import math
 import random
 import platform
+import hashlib
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -68,33 +47,60 @@ KNOWN_ROOTS = [
     Path("/content/new-plant-diseases-dataset"),
 ]
 
+
 def find_train_valid_pair(root):
     """Find sibling train/valid directories with class subfolders."""
     root = Path(root)
     if not root.exists():
         return None, None
-    for current, dirnames, _ in os.walk(root):
+    for current, dirnames, _ in sorted(os.walk(root)):
+        dirnames.sort()
         names = set(dirnames)
         if "train" in names and "valid" in names:
             train_path = Path(current) / "train"
             valid_path = Path(current) / "valid"
-            train_classes = {p.name for p in train_path.iterdir() if p.is_dir()} if train_path.exists() else set()
-            valid_classes = {p.name for p in valid_path.iterdir() if p.is_dir()} if valid_path.exists() else set()
+            train_classes = {
+                p.name for p in train_path.iterdir() if p.is_dir()
+            } if train_path.exists() else set()
+            valid_classes = {
+                p.name for p in valid_path.iterdir() if p.is_dir()
+            } if valid_path.exists() else set()
             if train_classes and train_classes == valid_classes:
                 return train_path, valid_path
     return None, None
 
+
 TRAIN_DIR, VALID_DIR = None, None
 DATASET_ROOT = None
-for candidate in KNOWN_ROOTS:
+configured_root = os.environ.get("PLANT_DATASET_ROOT")
+candidate_roots = (
+    [Path(configured_root)]
+    if configured_root
+    else KNOWN_ROOTS
+)
+for candidate in candidate_roots:
     TRAIN_DIR, VALID_DIR = find_train_valid_pair(candidate)
     if TRAIN_DIR is not None:
         DATASET_ROOT = candidate
         break
 
 if TRAIN_DIR is None:
-    import kagglehub
-    print("Dataset not found in standard mount locations; asking kagglehub to download it...")
+    try:
+        import kagglehub
+    except ImportError as exc:
+        raise FileNotFoundError(
+            "Dataset was not found locally. Set PLANT_DATASET_ROOT to a "
+            "directory containing sibling train/valid folders, or install "
+            "kagglehub and set PLANT_ALLOW_DOWNLOAD=1 to download it once."
+        ) from exc
+    if os.environ.get("PLANT_ALLOW_DOWNLOAD") != "1":
+        raise FileNotFoundError(
+            "Dataset was not found locally. Set PLANT_DATASET_ROOT to a "
+            "directory containing sibling train/valid folders. Automatic "
+            "download is disabled; set PLANT_ALLOW_DOWNLOAD=1 only when "
+            "an explicit Kaggle download is intended."
+        )
+    print("Local dataset not found; downloading it once with kagglehub...")
     downloaded_path = kagglehub.dataset_download(DATASET_SLUG)
     DATASET_ROOT = Path(downloaded_path)
     TRAIN_DIR, VALID_DIR = find_train_valid_pair(DATASET_ROOT)
@@ -157,31 +163,6 @@ val_image_loader = DataLoader(
 
 print(f"Image size: {IMG}x{IMG} | extraction batch: {EXTRACT_BATCH} | workers: {NUM_WORKERS}")
 print(f"Train batches: {len(train_image_loader)} | Validation batches: {len(val_image_loader)}")
-
-weights = models.MobileNet_V2_Weights.IMAGENET1K_V1
-model = models.mobilenet_v2(weights=weights)
-model.classifier = nn.Sequential(
-    nn.Dropout(p=0.2),
-    nn.Linear(model.last_channel, NUM_CLASSES),
-)
-
-# Freeze every parameter first, then explicitly enable only the new head.
-for parameter in model.parameters():
-    parameter.requires_grad = False
-for parameter in model.classifier.parameters():
-    parameter.requires_grad = True
-
-model = model.to(DEVICE)
-model.eval()  # frozen features must stay in inference mode (BatchNorm/dropout behavior is fixed)
-
-trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-all_params = sum(p.numel() for p in model.parameters())
-assert all(not p.requires_grad for p in model.features.parameters())
-assert all(p.requires_grad for p in model.classifier.parameters())
-assert trainable_params == NUM_CLASSES * (model.last_channel + 1)  # linear weights + bias; dropout has no weights
-
-print(f"Total parameters: {all_params:,} ({all_params * 4 / 1e6:.2f} MB at float32, weights only)")
-print(f"Trainable parameters: {trainable_params:,} ({trainable_params / 1e6:.3f}M)")
 
 weights = models.MobileNet_V2_Weights.IMAGENET1K_V1
 model = models.mobilenet_v2(weights=weights)
@@ -338,6 +319,21 @@ with open("training_log.csv", "w", newline="", encoding="utf-8") as f:
     for row_i in range(len(history["epoch"])):
         writer.writerow({key: history[key][row_i] for key in history})
 
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+axes[0].plot(history["epoch"], history["train_loss"], label="Train")
+axes[0].plot(history["epoch"], history["val_loss"], label="Validation")
+axes[0].set_title("Loss")
+axes[0].set_xlabel("Epoch")
+axes[0].legend()
+axes[1].plot(history["epoch"], history["train_acc"], label="Train")
+axes[1].plot(history["epoch"], history["val_acc"], label="Validation")
+axes[1].set_title("Accuracy")
+axes[1].set_xlabel("Epoch")
+axes[1].legend()
+fig.tight_layout()
+fig.savefig("training_curves.png", dpi=160)
+plt.close(fig)
+
 @torch.inference_mode()
 def predict_cached_head(features, batch_size=2048):
     probabilities = []
@@ -421,7 +417,7 @@ TREATMENT_ADVICE = {
         "Use resistant hybrids and manage infected crop residue.",
         "Consider crop rotation and local disease-management guidance."
     ],
-    "Corn_(maize)___Common_rust": [
+    "Corn_(maize)___Common_rust_": [
         "Check for reddish-brown pustules on leaves.",
         "Use resistant hybrids where available and monitor disease spread.",
         "Seek local guidance before deciding whether treatment is necessary."
@@ -573,6 +569,17 @@ TREATMENT_ADVICE = {
     ]
 }
 
+# Validate advice before writing the deployment artifact. Class names are
+# authoritative because ImageFolder determines the classifier output order.
+missing_advice = sorted(set(class_names) - set(TREATMENT_ADVICE))
+extra_advice = sorted(set(TREATMENT_ADVICE) - set(class_names))
+if missing_advice or extra_advice:
+    raise RuntimeError(
+        "Treatment advice keys do not match class_names.json. "
+        f"Missing: {missing_advice or 'none'}; "
+        f"Extra: {extra_advice or 'none'}."
+    )
+
 # Convert the dictionary into the structure expected by the frontend.
 TREATMENT_ADVICE = {
     name: {
@@ -657,6 +664,56 @@ ort_session = ort.InferenceSession(onnx_path, sess_options=session_options, prov
 input_name = ort_session.get_inputs()[0].name
 output_name = ort_session.get_outputs()[0].name
 
+onnx_input = ort_session.get_inputs()[0]
+onnx_output = ort_session.get_outputs()[0]
+if onnx_input.shape[1:] != [3, IMG, IMG]:
+    raise RuntimeError(
+        f"Unexpected ONNX input shape {onnx_input.shape}; "
+        f"expected [batch, 3, {IMG}, {IMG}]."
+    )
+if onnx_input.type != "tensor(float)":
+    raise RuntimeError(
+        f"Unexpected ONNX input type {onnx_input.type}; expected float32."
+    )
+if onnx_output.shape[-1] != NUM_CLASSES:
+    raise RuntimeError(
+        f"Unexpected ONNX output shape {onnx_output.shape}; "
+        f"expected {NUM_CLASSES} probabilities."
+    )
+
+# Compare the exported graph against the exact PyTorch deployment wrapper
+# using a deterministic representative input.
+parity_pixels = torch.linspace(
+    0.0, 255.0, steps=3 * IMG * IMG, dtype=torch.float32, device=DEVICE
+).reshape(1, 3, IMG, IMG)
+with torch.inference_mode():
+    torch_probabilities = deploy_model(parity_pixels).cpu().numpy()
+onnx_probabilities = ort_session.run(
+    [output_name],
+    {input_name: parity_pixels.cpu().numpy().astype(np.float32)},
+)[0]
+max_probability_difference = float(
+    np.max(np.abs(torch_probabilities - onnx_probabilities))
+)
+if not np.allclose(
+    torch_probabilities,
+    onnx_probabilities,
+    rtol=1e-4,
+    atol=1e-5,
+):
+    raise RuntimeError(
+        "PyTorch/ONNX parity check failed: "
+        f"max absolute probability difference is {max_probability_difference:.3g}."
+    )
+if int(torch_probabilities.argmax(axis=1)[0]) != int(
+    onnx_probabilities.argmax(axis=1)[0]
+):
+    raise RuntimeError("PyTorch/ONNX parity check predicted different classes.")
+print(
+    "PyTorch/ONNX parity: PASS | "
+    f"max abs probability difference {max_probability_difference:.3g}"
+)
+
 onnx_true, onnx_pred, onnx_confidence = [], [], []
 started = time.time()
 for batch_idx, (images_01, labels) in enumerate(val_raw_loader, start=1):
@@ -684,7 +741,19 @@ with open("validation_metrics.json", "w", encoding="utf-8") as f:
         "pytorch_validation_accuracy": val_accuracy_torch,
         "onnx_validation_accuracy": onnx_accuracy,
         "onnx_model_size_mb": Path(onnx_path).stat().st_size / 1e6,
+        "parity_max_abs_probability_difference": max_probability_difference,
+        "parity_rtol": 1e-4,
+        "parity_atol": 1e-5,
     }, f, indent=2)
+
+
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
 
 # Save a small metadata manifest for reproducibility.
 metadata = {
@@ -700,6 +769,28 @@ metadata = {
     "best_epoch": best_epoch,
     "pytorch_validation_accuracy": val_accuracy_torch,
     "onnx_validation_accuracy": onnx_accuracy,
+    "class_names_sha256": sha256_file("class_names.json"),
+    "model_sha256": sha256_file("model.onnx"),
+    "export": {
+        "opset_version": 17,
+        "input_name": input_name,
+        "output_name": output_name,
+        "input_layout": "NCHW",
+        "input_dtype": "float32",
+        "input_range": "[0, 255]",
+        "normalization": "ImageNet mean/std inside ONNX graph",
+        "dynamic_batch": True,
+        "parity_rtol": 1e-4,
+        "parity_atol": 1e-5,
+        "parity_max_abs_probability_difference": max_probability_difference,
+    },
+    "versions": {
+        "python": platform.python_version(),
+        "torch": torch.__version__,
+        "torchvision": __import__("torchvision").__version__,
+        "onnx": onnx.__version__,
+        "onnxruntime": ort.__version__,
+    },
 }
 with open("deployment_metadata.json", "w", encoding="utf-8") as f:
     json.dump(metadata, f, indent=2)

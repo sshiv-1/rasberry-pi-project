@@ -1,0 +1,22 @@
+[Unit]
+Description=Plant Disease Detector Flask application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=plantdetector
+Group=plantdetector
+WorkingDirectory=/opt/plant-disease-detector
+Environment=PORT=5000
+Environment=GUNICORN_WORKERS=1
+Environment=GUNICORN_THREADS=2
+Environment=GUNICORN_TIMEOUT=120
+ExecStart=/opt/plant-disease-detector/.venv/bin/gunicorn --bind 0.0.0.0:${PORT} --workers ${GUNICORN_WORKERS} --threads ${GUNICORN_THREADS} --timeout ${GUNICORN_TIMEOUT} pi_app:app
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

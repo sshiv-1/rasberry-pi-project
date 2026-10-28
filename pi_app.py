@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import hashlib
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +29,9 @@ METADATA_PATH = BASE_DIR / "deployment_metadata.json"
 DEFAULT_IMAGE_SIZE = int(os.environ.get("PLANT_IMAGE_SIZE", "160"))
 MIN_CONFIDENCE = float(os.environ.get("PLANT_MIN_CONFIDENCE", "0.60"))
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_IMAGE_PIXELS = int(
+    os.environ.get("PLANT_MAX_IMAGE_PIXELS", "20000000")
+)
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -37,6 +42,8 @@ logger = logging.getLogger("plant-disease-detector")
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
+warnings.simplefilter("error", Image.DecompressionBombWarning)
 
 
 # ============================================================
@@ -132,6 +139,51 @@ if not isinstance(raw_treatment_advice, dict):
 
 treatment_advice = raw_treatment_advice
 
+missing_treatment_keys = sorted(
+    set(class_names) - set(treatment_advice)
+)
+extra_treatment_keys = sorted(
+    set(treatment_advice) - set(class_names)
+)
+if missing_treatment_keys:
+    logger.warning(
+        "Missing class-specific treatment advice for %d class(es): %s. "
+        "Explicit general fallback will be used.",
+        len(missing_treatment_keys),
+        ", ".join(missing_treatment_keys),
+    )
+if extra_treatment_keys:
+    logger.warning(
+        "Ignoring %d treatment entries not present in class_names.json: %s",
+        len(extra_treatment_keys),
+        ", ".join(extra_treatment_keys),
+    )
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+if metadata:
+    expected_class_hash = metadata.get("class_names_sha256")
+    if expected_class_hash and expected_class_hash != sha256_file(
+        CLASS_NAMES_PATH
+    ):
+        raise RuntimeError(
+            "deployment_metadata.json does not match class_names.json. "
+            "Copy all deployment artifacts from the same training run."
+        )
+    expected_model_hash = metadata.get("model_sha256")
+    if expected_model_hash and expected_model_hash != sha256_file(MODEL_PATH):
+        raise RuntimeError(
+            "deployment_metadata.json does not match model.onnx. "
+            "Copy all deployment artifacts from the same training run."
+        )
+
 
 # ============================================================
 # INITIALIZE ONNX RUNTIME
@@ -217,6 +269,21 @@ if (
         f"{CLASS_NAMES_PATH.name} contains {len(class_names)}. "
         "These files must come from the same train.py run."
     )
+if metadata.get("architecture") not in (None, "MobileNetV2"):
+    raise RuntimeError(
+        f"Unsupported model architecture in deployment_metadata.json: "
+        f"{metadata.get('architecture')!r}."
+    )
+export_metadata = metadata.get("export")
+if isinstance(export_metadata, dict):
+    if export_metadata.get("input_layout") not in (None, "NCHW"):
+        raise RuntimeError(
+            "deployment_metadata.json specifies a non-NCHW input layout."
+        )
+    if export_metadata.get("input_dtype") not in (None, "float32"):
+        raise RuntimeError(
+            "deployment_metadata.json specifies a non-float32 input."
+        )
 
 if metadata.get("classes") not in (None, len(class_names)):
     raise RuntimeError(
@@ -322,7 +389,8 @@ def preprocess(image: Image.Image) -> np.ndarray:
     The ONNX graph already performs normalization.
     """
 
-    image = ImageOps.exif_transpose(image).convert("RGB")
+    transposed = ImageOps.exif_transpose(image)
+    image = (transposed if transposed is not None else image).convert("RGB")
 
     resampling = getattr(
         Image,
@@ -409,6 +477,47 @@ def predict(image: Image.Image) -> list[dict]:
         })
 
     return results
+
+
+def analyze_upload(upload) -> tuple[list[dict], dict, bool]:
+    """Decode, validate, predict, and map advice for one uploaded image."""
+    if not upload or not upload.filename:
+        raise ValueError("Choose a leaf image first.")
+
+    with Image.open(upload.stream) as opened:
+        opened.verify()
+
+    upload.stream.seek(0)
+    with Image.open(upload.stream) as opened:
+        if opened.width * opened.height > MAX_IMAGE_PIXELS:
+            raise ValueError(
+                "This image has too many decoded pixels. "
+                "Please choose a smaller photo."
+            )
+        results = predict(opened)
+
+    if not results:
+        raise RuntimeError("The model did not return a prediction.")
+
+    top_result = results[0]
+    low_confidence = top_result["confidence"] < MIN_CONFIDENCE
+    advice = treatment_advice.get(top_result["class_name"])
+    used_fallback = not (
+        isinstance(advice, dict)
+        and isinstance(advice.get("advice"), list)
+    )
+    if used_fallback:
+        logger.warning(
+            "Using explicit general treatment fallback for class %s",
+            top_result["class_name"],
+        )
+        advice = fallback_advice(top_result["class_name"])
+    advice.setdefault(
+        "note",
+        "General guidance only. Confirm the diagnosis with a local "
+        "agricultural expert.",
+    )
+    return results, advice, low_confidence
 
 
 # ============================================================
@@ -649,12 +758,12 @@ main{
         <div class="warning">
             <strong>Low-confidence result.</strong>
             Try another close, well-lit photo with the leaf filling
-            most of the frame. This model only knows its 38 training
+            most of the frame. This model only knows its {{ class_count }} training
             labels and can mislabel unfamiliar plants or conditions.
         </div>
     {% endif %}
 
-    <h3>Other likely classes</h3>
+    <h3>Top predictions</h3>
 
     {% for r in results %}
         <div class="rank">
@@ -722,76 +831,34 @@ def index():
     low_confidence = False
 
     if request.method == "POST":
+        try:
+            results, advice, low_confidence = analyze_upload(
+                request.files.get("leaf_image")
+            )
+        except (
+            UnidentifiedImageError,
+            Image.DecompressionBombError,
+            Image.DecompressionBombWarning,
+            OSError,
+        ):
+            error = (
+                "This file could not be read safely as an image. "
+                "Please use a valid, smaller JPEG or PNG photo."
+            )
+        except ValueError as exc:
+            error = str(exc)
+        except Exception:
+            logger.exception(
+                "Prediction failed while processing an uploaded image"
+            )
+            error = (
+                "Prediction failed. Check that the deployment artifacts "
+                "come from the same training run, then inspect the "
+                "terminal log."
+            )
 
-        upload = request.files.get("leaf_image")
-
-        if not upload or not upload.filename:
-            error = "Choose a leaf image first."
-
-        else:
-            try:
-                # Verify the image before decoding it.
-                # User uploads are never saved to disk.
-                with Image.open(upload.stream) as opened:
-                    opened.verify()
-
-                upload.stream.seek(0)
-
-                with Image.open(upload.stream) as opened:
-                    results = predict(opened)
-
-                if not results:
-                    error = (
-                        "The model did not return a prediction. "
-                        "Try another image."
-                    )
-
-                else:
-                    low_confidence = (
-                        results[0]["confidence"] < MIN_CONFIDENCE
-                    )
-
-                    advice = treatment_advice.get(
-                        results[0]["class_name"]
-                    )
-
-                    if (
-                        not isinstance(advice, dict)
-                        or not isinstance(advice.get("advice"), list)
-                    ):
-                        advice = fallback_advice(
-                            results[0]["class_name"]
-                        )
-
-                    advice.setdefault(
-                        "note",
-                        "General guidance only. Confirm the diagnosis "
-                        "with a local agricultural expert.",
-                    )
-
-            except (
-                UnidentifiedImageError,
-                OSError,
-                ValueError,
-            ):
-                error = (
-                    "This file could not be read as an image. "
-                    "Please use a valid JPEG or PNG photo."
-                )
-
-            except Exception:
-                logger.exception(
-                    "Prediction failed while processing an uploaded image"
-                )
-
-                error = (
-                    "Prediction failed. Check that model.onnx and "
-                    "class_names.json are from the same training run, "
-                    "then inspect the terminal log."
-                )
-
-            if error:
-                results = None
+        if error:
+            results = None
 
     return render_template_string(
         PAGE,
@@ -799,6 +866,7 @@ def index():
         advice=advice,
         error=error,
         low_confidence=low_confidence,
+        class_count=len(class_names),
     )
 
 
@@ -819,6 +887,42 @@ def too_large(_error):
         ),
         low_confidence=False,
     ), 413
+
+
+@app.route("/predict", methods=["POST"])
+def predict_api():
+    """Return the same prediction data as JSON for programmatic clients."""
+    try:
+        results, advice, low_confidence = analyze_upload(
+            request.files.get("leaf_image")
+        )
+    except (
+        UnidentifiedImageError,
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+        OSError,
+    ):
+        return jsonify({
+            "error": (
+                "This file could not be read safely as an image. "
+                "Please use a valid, smaller JPEG or PNG photo."
+            )
+        }), 400
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        logger.exception("Prediction API request failed")
+        return jsonify({
+            "error": "Prediction failed. Check the server logs."
+        }), 500
+
+    return jsonify({
+        "predictions": results,
+        "top_prediction": results[0],
+        "low_confidence": low_confidence,
+        "confidence_threshold": MIN_CONFIDENCE,
+        "advice": advice,
+    })
 
 
 # ============================================================
